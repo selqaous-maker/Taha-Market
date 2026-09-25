@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useId, useRef } from 'react';
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { Product, ShopSettings } from '../types';
 import { dbService } from '../services/db';
 import { PinModal } from './PinModal';
@@ -14,7 +15,8 @@ import {
   Archive,
   RotateCcw,
   CheckCircle2,
-  DollarSign
+  DollarSign,
+  Camera
 } from 'lucide-react';
 
 interface ProductsTabProps {
@@ -46,12 +48,93 @@ export const ProductsTab: React.FC<ProductsTabProps> = ({
   const [formUnit, setFormUnit] = useState('pièce');
   const [formError, setFormError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [barcodeScannerOpen, setBarcodeScannerOpen] = useState(false);
+  const [barcodeScannerError, setBarcodeScannerError] = useState<string | null>(null);
+  const scannerId = `product-barcode-reader-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
+  const barcodeScannerRef = useRef<Html5Qrcode | null>(null);
 
   // PIN modal
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   const currency = settings.currency || 'MAD';
+
+  // Mount the camera reader first, then start it so it can measure its viewport.
+  useEffect(() => {
+    if (!barcodeScannerOpen) return;
+
+    let cancelled = false;
+    let scanner: Html5Qrcode | null = null;
+
+    const startScanner = async () => {
+      try {
+        if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+          throw new Error('La caméra nécessite une connexion HTTPS. Ouvrez le site dans Chrome.');
+        }
+
+        await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+        if (cancelled) return;
+
+        const reader = document.getElementById(scannerId);
+        if (!reader || reader.clientWidth === 0) {
+          throw new Error('La fenêtre de lecture ne peut pas démarrer. Fermez-la et réessayez.');
+        }
+
+        scanner = new Html5Qrcode(scannerId, {
+          verbose: false,
+          formatsToSupport: [
+            Html5QrcodeSupportedFormats.EAN_13,
+            Html5QrcodeSupportedFormats.EAN_8,
+            Html5QrcodeSupportedFormats.UPC_A,
+            Html5QrcodeSupportedFormats.UPC_E,
+            Html5QrcodeSupportedFormats.CODE_128,
+            Html5QrcodeSupportedFormats.CODE_39,
+          ],
+        });
+        barcodeScannerRef.current = scanner;
+
+        await scanner.start(
+          { facingMode: 'environment' },
+          { fps: 10, qrbox: { width: Math.max(180, Math.min(260, reader.clientWidth - 24)), height: 100 }, aspectRatio: 16 / 9 },
+          (decodedBarcode) => {
+            if (cancelled) return;
+            setFormBarcode(decodedBarcode.trim());
+            setBarcodeScannerOpen(false);
+          },
+          () => { /* No barcode in this camera frame. */ },
+        );
+      } catch (error) {
+        console.warn('Product barcode scanner error:', error);
+        if (scanner) {
+          try { if (scanner.isScanning) await scanner.stop(); } catch { /* Ignore startup cleanup errors. */ }
+          try { scanner.clear(); } catch { /* The reader may already be cleared. */ }
+        }
+        if (barcodeScannerRef.current === scanner) barcodeScannerRef.current = null;
+        if (!cancelled) {
+          const name = (error as DOMException)?.name;
+          const message = name === 'NotAllowedError' || name === 'PermissionDeniedError'
+            ? 'Autorisez l’accès à la caméra dans les paramètres de Chrome.'
+            : name === 'NotFoundError'
+              ? 'Aucune caméra détectée sur cet appareil.'
+              : (error as Error)?.message || 'Impossible de démarrer la caméra.';
+          setBarcodeScannerError(message);
+          setBarcodeScannerOpen(false);
+        }
+      }
+    };
+
+    void startScanner();
+
+    return () => {
+      cancelled = true;
+      const activeScanner = barcodeScannerRef.current;
+      barcodeScannerRef.current = null;
+      if (activeScanner) {
+        const stop = activeScanner.isScanning ? activeScanner.stop() : Promise.resolve();
+        void stop.then(() => activeScanner.clear()).catch(() => undefined);
+      }
+    };
+  }, [barcodeScannerOpen, scannerId]);
 
   // Categories list
   const categories = useMemo(() => {
@@ -93,6 +176,8 @@ export const ProductsTab: React.FC<ProductsTabProps> = ({
     setFormCategory('Épicerie');
     setFormUnit('pièce');
     setFormError(null);
+    setBarcodeScannerOpen(false);
+    setBarcodeScannerError(null);
     setIsFormModalOpen(true);
   };
 
@@ -105,6 +190,8 @@ export const ProductsTab: React.FC<ProductsTabProps> = ({
     setFormCategory(prod.category || 'Divers');
     setFormUnit(prod.unit || 'pièce');
     setFormError(null);
+    setBarcodeScannerOpen(false);
+    setBarcodeScannerError(null);
     setIsFormModalOpen(true);
   };
 
@@ -462,15 +549,38 @@ export const ProductsTab: React.FC<ProductsTabProps> = ({
                 <label className="block text-xs font-medium text-slate-300 mb-1">
                   Code-barres (laisser vide si article sans code)
                 </label>
-                <input
-                  type="text"
-                  value={formBarcode}
-                  onChange={(e) => setFormBarcode(e.target.value)}
-                  placeholder="Ex: 6111032001144"
-                  className="w-full bg-slate-800 border border-slate-700 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl px-3 py-2 text-sm font-mono text-white placeholder-slate-500 outline-none"
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={formBarcode}
+                    onChange={(e) => setFormBarcode(e.target.value)}
+                    placeholder="Ex: 6111032001144"
+                    className="min-w-0 flex-1 bg-slate-800 border border-slate-700 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl px-3 py-2 text-sm font-mono text-white placeholder-slate-500 outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => { setBarcodeScannerError(null); setBarcodeScannerOpen(true); }}
+                    className="shrink-0 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5"
+                  >
+                    <Camera className="w-4 h-4" />
+                    Scanner
+                  </button>
+                </div>
+                {barcodeScannerOpen && (
+                  <div className="mt-2 rounded-xl overflow-hidden border border-slate-700 bg-black">
+                    <div id={scannerId} className="w-full min-h-[220px] [&_video]:max-w-full" />
+                    <button
+                      type="button"
+                      onClick={() => setBarcodeScannerOpen(false)}
+                      className="w-full py-2 bg-slate-800 text-slate-200 text-xs font-semibold"
+                    >
+                      Fermer le scanner
+                    </button>
+                  </div>
+                )}
+                {barcodeScannerError && <p className="text-[11px] text-amber-300 mt-1">{barcodeScannerError}</p>}
                 <p className="text-[10px] text-slate-400 mt-0.5">
-                  Les codes-barres doivent être uniques.
+                  Saisissez le code ou appuyez sur Scanner. Chaque code-barres doit être unique.
                 </p>
               </div>
 
