@@ -1,20 +1,25 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# Taha Market POS
 
-# Run and deploy your AI Studio app
+A mobile-first point-of-sale prototype for a single grocery shop. Built with React, TypeScript, Vite and IndexedDB, with a Progressive Web App manifest and local backup/export features.
 
-This contains everything you need to run your app locally.
+## Run locally
 
-View your app in AI Studio: https://ai.studio/apps/1e5ea882-20d5-451d-9385-bf9792bc374c
+Requirements: Node.js 20.19+ or 22.12+.
 
-## Run Locally
+```sh
+npm install
+npm run dev
+```
 
-**Prerequisites:**  Node.js
+To create a production build:
 
+```sh
+npm run build
+npm run preview
+```
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+Camera access requires HTTPS (or localhost) and browser support. Manual barcode entry is available as a fallback.
+
+## Important
+
+This is a prototype. The included catalog contains sample products and prices, and the default owner PIN is only for demonstration. Replace the sample data and configure a private PIN before using it for real sales. Product and sales records are stored locally in the browser on the device; export backups regularly. No online card payment is processed.
