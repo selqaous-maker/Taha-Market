@@ -1,0 +1,10 @@
+{
+  "name": "Taha Market POS",
+  "description": "Système de caisse mobile professionnel pour Taha Market, optimisé pour Android avec scan codes-barres, catalogue de prix en MAD, gestion hors-ligne et reçus.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
