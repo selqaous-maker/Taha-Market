@@ -1,6 +1,6 @@
 # Taha Market POS
 
-A mobile-first point-of-sale prototype for a single grocery shop. Built with React, TypeScript, Vite and IndexedDB, with a Progressive Web App manifest and local backup/export features.
+A mobile-first point-of-sale prototype for one grocery shop. Built with React, TypeScript, Vite and IndexedDB, with a Progressive Web App manifest and local backup/export features.
 
 ## Run locally
 
@@ -18,8 +18,8 @@ npm run build
 npm run preview
 ```
 
-Camera access requires HTTPS (or localhost) and browser support. Manual barcode entry is available as a fallback.
+The GitHub Pages workflow builds and deploys the app on updates to `main`. Camera access requires HTTPS and browser support; manual barcode entry is also available.
 
-## Important
+## Before real sales
 
-This is a prototype. The included catalog contains sample products and prices, and the default owner PIN is only for demonstration. Replace the sample data and configure a private PIN before using it for real sales. Product and sales records are stored locally in the browser on the device; export backups regularly. No online card payment is processed.
+This remains a prototype. It includes sample products/prices and a demonstration owner PIN; configure real data and a private PIN before using it for checkout. Product and sales records are stored locally in the browser on the device. Export backups regularly. Card payments are not processed by the app.

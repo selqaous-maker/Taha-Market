@@ -5,7 +5,9 @@ import {defineConfig} from 'vite';
 import {VitePWA} from 'vite-plugin-pwa';
 
 export default defineConfig(() => {
+  const base = process.env.GITHUB_PAGES === 'true' ? '/Taha-Market/' : '/';
   return {
+    base,
     plugins: [
       react(),
       tailwindcss(),
@@ -13,7 +15,7 @@ export default defineConfig(() => {
         registerType: 'autoUpdate',
         includeAssets: ['icon.svg', 'apple-touch-icon.png', 'pwa-192x192.png', 'pwa-512x512.png'],
         manifest: {
-          id: '/',
+          id: base,
           name: 'Taha Market POS',
           short_name: 'Taha Market',
           description: 'Caisse enregistreuse mobile rapide et hors-ligne pour épicerie Taha Market',
@@ -21,23 +23,23 @@ export default defineConfig(() => {
           background_color: '#0f172a',
           display: 'standalone',
           orientation: 'portrait',
-          start_url: '/',
-          scope: '/',
+          start_url: base,
+          scope: base,
           icons: [
             {
-              src: '/pwa-192x192.png',
+              src: `${base}pwa-192x192.png`,
               sizes: '192x192',
               type: 'image/png',
               purpose: 'any',
             },
             {
-              src: '/pwa-512x512.png',
+              src: `${base}pwa-512x512.png`,
               sizes: '512x512',
               type: 'image/png',
               purpose: 'any',
             },
             {
-              src: '/icon.svg',
+              src: `${base}icon.svg`,
               sizes: 'any',
               type: 'image/svg+xml',
               purpose: 'any',
