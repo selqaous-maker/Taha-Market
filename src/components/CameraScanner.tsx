@@ -74,6 +74,15 @@ export const CameraScanner: React.FC<CameraScannerProps> = ({ onScan, isPaused =
         throw new Error('La caméra nécessite une connexion HTTPS et un navigateur mobile compatible. Ouvrez le lien dans Chrome.');
       }
 
+      // Wait for React to commit the camera viewport before html5-qrcode
+      // measures its width and creates the video element. Starting it in the
+      // same click handler can otherwise produce a zero-width black preview.
+      await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+      const reader = document.getElementById(readerId);
+      if (!reader || reader.clientWidth === 0) {
+        throw new Error('ما قدرناش نهيّؤو مساحة الكاميرا. عاود فتح التطبيق وجرب مرة أخرى.');
+      }
+
       scanner = new Html5Qrcode(readerId, {
         verbose: false,
         formatsToSupport: [
@@ -90,7 +99,7 @@ export const CameraScanner: React.FC<CameraScannerProps> = ({ onScan, isPaused =
 
       await scanner.start(
         { facingMode: 'environment' },
-        { fps: 10, qrbox: { width: 260, height: 110 }, aspectRatio: 16 / 9 },
+        { fps: 10, qrbox: { width: Math.min(260, reader.clientWidth - 24), height: 110 }, aspectRatio: 16 / 9 },
         (decodedText) => handleDetectedCode(decodedText),
         () => { /* No barcode in this frame; keep scanning. */ },
       );
